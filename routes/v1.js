@@ -317,7 +317,7 @@ function addRoutes(app, peliasConfig) {
       sanitizers.place.middleware(peliasConfig.api),
       middleware.requestLanguage,
       controllers.place(peliasConfig.api, esclient),
-      middleware.expandDocument(peliasConfig.api, esclient),
+      middleware.expandDocument(esclient),
       middleware.accuracy(),
       middleware.localNamingConventions(),
       middleware.renamePlacenames(),

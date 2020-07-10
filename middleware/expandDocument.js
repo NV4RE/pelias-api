@@ -1,13 +1,13 @@
 const dotProp = require('dot-prop');
 
-function service(apiConfig, esclient) {
+function service(esclient) {
   function expandDocument(doc) {
     const traverse = (obj, cb, keypath) => {
       for (let k in obj) {
         const newkeypath = keypath ? keypath + '.' + k : k;
 
-        if (obj[k] && typeof obj[k] === 'object') {
-          //} && !Array.isArray(obj[k])) {
+        // don't recurse down arrays so that we can send them to ES all at once
+        if (obj[k] && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
           traverse(obj[k], cb, newkeypath);
         } else {
           cb(obj[k], newkeypath);
@@ -15,34 +15,27 @@ function service(apiConfig, esclient) {
       }
     };
 
-    console.log(doc);
-
     const promises = [];
     doc.debug = doc.debug || {};
     doc.debug.expanded = {};
 
+    // Go through every field in the doc
     traverse(doc, (value, keypath) => {
-      console.log({ keypath, value });
-      if (!value) {
-        return;
-      }
-      if (typeof value === 'number') {
-        return;
-      }
-      if (Array.isArray(value)) {
+      if (!value || typeof value === 'number') {
         return;
       }
       promises.push(
+        // For each field, send an RPC to elastic search to analyze it
         esclient.indices
           .analyze({ index: 'pelias', body: { field: keypath, text: value } })
           .then((tokens) => {
-            console.log({ keypath, value, tokens });
+            // rebuild an object in doc.debug.expanded with the analysis results
             dotProp.set(doc.debug.expanded, keypath, tokens);
           })
-          .catch((err) => console.error(err))
+          .catch(() => {})
       );
     });
-    return promises;
+    return Promise.all(promises);
   }
 
   return (req, res, next) => {
