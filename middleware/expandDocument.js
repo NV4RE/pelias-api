@@ -1,4 +1,5 @@
 const dotProp = require('dot-prop');
+const _ = require('lodash');
 
 function service(esclient) {
   function expandDocument(doc) {
@@ -36,7 +37,17 @@ function service(esclient) {
     };
 
     // Go through every field in the doc
-    traverse(doc, lookupCb);
+    traverse(doc, (value, keypath) => {
+      // look up the analyzed version of this in ES
+      lookupCb(value, keypath);
+      // and also the dynamic .ngram version
+      lookupCb(value, keypath + '.ngram');
+    });
+
+    // for each language on doc.name, simulate the unstored phrase.lang field
+    _.forEach(doc.name, (v, k) => {
+      lookupCb(v, 'phrase.' + k);
+    });
 
     return Promise.all(promises);
   }
