@@ -19,8 +19,7 @@ function service(esclient) {
     doc.debug = doc.debug || {};
     doc.debug.expanded = {};
 
-    // Go through every field in the doc
-    traverse(doc, (value, keypath) => {
+    const lookupCb = (value, keypath) => {
       if (!value || typeof value === 'number') {
         return;
       }
@@ -34,7 +33,11 @@ function service(esclient) {
           })
           .catch(() => {})
       );
-    });
+    };
+
+    // Go through every field in the doc
+    traverse(doc, lookupCb);
+
     return Promise.all(promises);
   }
 
