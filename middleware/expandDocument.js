@@ -26,11 +26,19 @@ function service(esclient) {
       }
       promises.push(
         // For each field, send an RPC to elastic search to analyze it
+        // If you give ES the field name, it will match it to the analyzers specified in
+        // the schema mapping, without needing to explicitly ask for any individual analyzers
         esclient.indices
           .analyze({ index: 'pelias', body: { field: keypath, text: value } })
           .then((tokens) => {
+            // Group tokens by position and then make the output more compact
+            const tokensByPosition = _.groupBy(tokens.tokens || [], (token) => token.position);
+            const simplifiedTokensByPosition = _.mapValues(tokensByPosition, (tokens) =>
+              tokens.map((token) => `${token.token} (${token.type})`)
+            );
+
             // rebuild an object in doc.debug.expanded with the analysis results
-            dotProp.set(doc.debug.expanded, keypath, tokens);
+            dotProp.set(doc.debug.expanded, keypath, simplifiedTokensByPosition);
           })
           .catch(() => {})
       );
